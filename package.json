@@ -26,8 +26,11 @@
     "prepare": "tsc",
     "pretest": "tsc -b . test -f",
     "test": "nyc ava",
-    "posttest": "nyc report --reporter=text-lcov | coveralls || true",
-    "dist": "tsc -t ES2015 -m es2015 && rollup index.js --output.format umd --name rfc6902 --output.file dist/rfc6902.js && closure-compiler dist/rfc6902.js > dist/rfc6902.min.js",
+    "posttest": "nyc report --reporter=text-lcov | coveralls || true", 
+    "dist": "tsc -t ES2015 -m es2015 && rollup index.js --output.format umd --name y-rfc6902 --output.file dist/y-rfc6902.js --external yjs --globals yjs:Y && closure-compiler dist/y-rfc6902.js > dist/y-rfc6902.min.js",
     "clean": "tsc -b . test --clean"
+  },
+  "dependencies": {
+    "yjs": "^13.4.9"
   }
 }
