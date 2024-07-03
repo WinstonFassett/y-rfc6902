@@ -1,3 +1,5 @@
+import { AbstractType, Array as YArray, Map as YMap } from "yjs"
+
 /**
 Unescape token part of a JSON Pointer string
 
@@ -43,15 +45,15 @@ export interface PointerEvaluation {
 /**
 JSON Pointer representation
 */
-export class Pointer {
+export class YPointer {
   constructor(public tokens = ['']) { }
   /**
   `path` *must* be a properly escaped string.
   */
-  static fromJSON(path: string): Pointer {
+  static fromJSON(path: string): YPointer {
     const tokens = path.split('/').map(unescape)
     if (tokens[0] !== '') throw new Error(`Invalid JSON Pointer: ${path}`)
-    return new Pointer(tokens)
+    return new YPointer(tokens)
   }
   toString(): string {
     return this.tokens.map(escape).join('/')
@@ -64,13 +66,17 @@ export class Pointer {
   */
   evaluate(object: any): PointerEvaluation {
     let parent: any = null
-    let key = ''
+    let key : number | string = ''
     let value = object
     for (let i = 1, l = this.tokens.length; i < l; i++) {
       parent = value
       key = this.tokens[i]
       // not sure if this the best way to handle non-existant paths...
-      value = (parent || {})[key]
+      if (parent instanceof YMap || parent instanceof YArray) {
+        value = parent && (parent as any).get(key)
+      } else {        
+        value = (parent || {})[key]
+      }
     }
     return {parent, key, value}
   }
@@ -96,8 +102,8 @@ export class Pointer {
 
   immutable (shallowly)
   */
-  add(token: string): Pointer {
+  add(token: string): YPointer {
     const tokens = this.tokens.concat(String(token))
-    return new Pointer(tokens)
+    return new YPointer(tokens)
   }
 }

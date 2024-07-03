@@ -1,5 +1,5 @@
-import {Pointer} from './pointer'
-import {clone} from './util'
+import {YPointer} from './y-pointer'
+import {arraySpliceYMaybe, cloneYMaybe, setOnYMaybe} from './y-utils'
 import {AddOperation,
         RemoveOperation,
         ReplaceOperation,
@@ -8,6 +8,7 @@ import {AddOperation,
         TestOperation,
         Operation,
         diffAny} from './diff'
+import * as Y from 'yjs'
 
 export class MissingError extends Error {
   constructor(public path: string) {
@@ -24,7 +25,15 @@ export class TestError extends Error {
 }
 
 function _add(object: any, key: string, value: any): void {
-  if (Array.isArray(object)) {
+  if (object instanceof Y.AbstractType) {
+    if (object instanceof Y.Map) {
+      object.set(key, value)
+    }
+    else if (object instanceof Y.Array) {
+      object.insert(parseInt(key), [value])
+    }
+  }  
+  else if (Array.isArray(object)) {
     // `key` must be an index
     if (key == '-') {
       object.push(value)
@@ -33,17 +42,17 @@ function _add(object: any, key: string, value: any): void {
       const index = parseInt(key, 10)
       object.splice(index, 0, value)
     }
-  }
+  }   
   else {
     object[key] = value
   }
 }
 
 function _remove(object: any, key: string): void {
-  if (Array.isArray(object)) {
+  if (Array.isArray(object) || object instanceof Y.Array) {
     // '-' syntax doesn't make sense when removing
-    const index = parseInt(key, 10)
-    object.splice(index, 1)
+    const index = parseInt(key, 10)    
+    arraySpliceYMaybe(object, index, 1)
   }
   else {
     // not sure what the proper behavior is when path = ''
@@ -59,13 +68,14 @@ function _remove(object: any, key: string): void {
 >  o  If the target location specifies an object member that does exist,
 >     that member's value is replaced.
 */
-export function add(object: any, operation: AddOperation): MissingError | null {
-  const endpoint = Pointer.fromJSON(operation.path).evaluate(object)
+export function add(object: any, operation: AddOperation, cloneValue: boolean = true): MissingError | null {
+  const endpoint = YPointer.fromJSON(operation.path).evaluate(object)
   // it's not exactly a "MissingError" in the same way that `remove` is -- more like a MissingParent, or something
   if (endpoint.parent === undefined) {
     return new MissingError(operation.path)
   }
-  _add(endpoint.parent, endpoint.key, clone(operation.value))
+  const value = cloneValue ? cloneYMaybe(operation.value) : operation.value
+  _add(endpoint.parent, endpoint.key, value)
   return null
 }
 
@@ -75,7 +85,7 @@ export function add(object: any, operation: AddOperation): MissingError | null {
 */
 export function remove(object: any, operation: RemoveOperation): MissingError | null {
   // endpoint has parent, key, and value properties
-  const endpoint = Pointer.fromJSON(operation.path).evaluate(object)
+  const endpoint = YPointer.fromJSON(operation.path).evaluate(object)
   if (endpoint.value === undefined) {
     return new MissingError(operation.path)
   }
@@ -97,7 +107,7 @@ export function remove(object: any, operation: RemoveOperation): MissingError | 
 Even more simply, it's like the add operation with an existence check.
 */
 export function replace(object: any, operation: ReplaceOperation): MissingError | null {
-  const endpoint = Pointer.fromJSON(operation.path).evaluate(object)
+  const endpoint = YPointer.fromJSON(operation.path).evaluate(object)
   if (endpoint.parent === null) {
     return new MissingError(operation.path)
   }
@@ -110,7 +120,8 @@ export function replace(object: any, operation: ReplaceOperation): MissingError 
   else if (endpoint.value === undefined) {
     return new MissingError(operation.path)
   }
-  endpoint.parent[endpoint.key] = clone(operation.value)
+  setOnYMaybe(endpoint.parent, operation.value, endpoint.key)
+  // endpoint.parent[endpoint.key] = operation.value
   return null
 }
 
@@ -130,11 +141,11 @@ export function replace(object: any, operation: ReplaceOperation): MissingError 
 TODO: throw if the check described in the previous paragraph fails.
 */
 export function move(object: any, operation: MoveOperation): MissingError | null {
-  const from_endpoint = Pointer.fromJSON(operation.from).evaluate(object)
+  const from_endpoint = YPointer.fromJSON(operation.from).evaluate(object)
   if (from_endpoint.value === undefined) {
     return new MissingError(operation.from)
   }
-  const endpoint = Pointer.fromJSON(operation.path).evaluate(object)
+  const endpoint = YPointer.fromJSON(operation.path).evaluate(object)
   if (endpoint.parent === undefined) {
     return new MissingError(operation.path)
   }
@@ -157,15 +168,15 @@ export function move(object: any, operation: MoveOperation): MissingError | null
 Alternatively, it's like 'move' without the 'remove'.
 */
 export function copy(object: any, operation: CopyOperation): MissingError | null {
-  const from_endpoint = Pointer.fromJSON(operation.from).evaluate(object)
+  const from_endpoint = YPointer.fromJSON(operation.from).evaluate(object)
   if (from_endpoint.value === undefined) {
     return new MissingError(operation.from)
   }
-  const endpoint = Pointer.fromJSON(operation.path).evaluate(object)
+  const endpoint = YPointer.fromJSON(operation.path).evaluate(object)
   if (endpoint.parent === undefined) {
     return new MissingError(operation.path)
   }
-  _add(endpoint.parent, endpoint.key, clone(from_endpoint.value))
+  _add(endpoint.parent, endpoint.key, cloneYMaybe(from_endpoint.value))
   return null
 }
 
@@ -178,10 +189,11 @@ export function copy(object: any, operation: CopyOperation): MissingError | null
 > operation to be considered successful.
 */
 export function test(object: any, operation: TestOperation): TestError | null {
-  const endpoint = Pointer.fromJSON(operation.path).evaluate(object)
+  const endpoint = YPointer.fromJSON(operation.path).evaluate(object)
   // TODO: this diffAny(...).length usage could/should be lazy
-  if (diffAny(endpoint.value, operation.value, new Pointer()).length) {
-    return new TestError(endpoint.value, operation.value)
+  const value = endpoint.value && endpoint.value.toJSON ? endpoint.value.toJSON(): endpoint.value
+  if (diffAny(value, operation.value, new YPointer()).length) {
+    return new TestError(value, operation.value)
   }
   return null
 }
@@ -197,12 +209,12 @@ export class InvalidOperationError extends Error {
 Switch on `operation.op`, applying the corresponding patch function for each
 case to `object`.
 */
-export function apply(object: any, operation: Operation): MissingError | InvalidOperationError | TestError | null {
+export function apply(object: any, operation: Operation, cloneValue?: boolean): MissingError | InvalidOperationError | TestError | null {
   // not sure why TypeScript can't infer typesafety of:
   //   {add, remove, replace, move, copy, test}[operation.op](object, operation)
   // (seems like a bug)
   switch (operation.op) {
-    case 'add':     return add(object, operation)
+    case 'add':     return add(object, operation, cloneValue)
     case 'remove':  return remove(object, operation)
     case 'replace': return replace(object, operation)
     case 'move':    return move(object, operation)

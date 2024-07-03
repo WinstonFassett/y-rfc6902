@@ -6,8 +6,10 @@ import * as yaml from 'js-yaml'
 
 import {applyPatch, createPatch} from '../index'
 import {Operation} from '../diff'
-import {Pointer} from '../pointer'
-import {clone} from '../util'
+import {YPointer} from '../y-pointer'
+import {cloneYMaybe, objectToY} from '../y-utils'
+import { Doc } from 'yjs'
+import { makeY } from '../y-testing-utils'
 
 interface Spec {
   name: string
@@ -19,7 +21,7 @@ interface Spec {
 }
 
 const spec_data = yaml.load(readFileSync(join(__dirname, 'spec.yaml'),
-                                         {encoding: 'utf8'})) as Spec[]
+                                                 {encoding: 'utf8'})) as Spec[]
 
 test('JSON Pointer - rfc-examples', t => {
   // > For example, given the JSON document
@@ -53,8 +55,9 @@ test('JSON Pointer - rfc-examples', t => {
   ]
 
   pointers.forEach(pointer => {
-    const actual = Pointer.fromJSON(pointer.path).evaluate(obj).value
-    t.deepEqual(actual, pointer.expected, `pointer "${pointer.path}" should evaluate to expected output`)
+    const actual = YPointer.fromJSON(pointer.path).evaluate(makeY(obj)).value
+    const data = (actual && actual.toJSON) ? actual.toJSON() : actual
+    t.deepEqual(data, pointer.expected, `pointer "${pointer.path}" should evaluate to expected output`)
   })
 })
 
@@ -94,8 +97,9 @@ test('JSON Pointer - package example', t => {
   ]
 
   pointers.forEach(pointer => {
-    const actual = Pointer.fromJSON(pointer.path).evaluate(obj).value
-    t.deepEqual(actual, pointer.expected, `pointer "${pointer.path}" should evaluate to expected output`)
+    const actual = YPointer.fromJSON(pointer.path).evaluate(makeY(obj)).value
+    const data = (actual && actual.toJSON) ? actual.toJSON() : actual
+    t.deepEqual(data, pointer.expected, `pointer "${pointer.path}" should evaluate to expected output`)
   })
 })
 
@@ -113,7 +117,7 @@ test('Specification format', t => {
 spec_data.forEach(spec => {
   test(`patch ${spec.name}`, t => {
     // patch operations are applied to object in-place
-    const actual = clone(spec.input)
+    const actual = cloneYMaybe(spec.input)
     const expected = spec.output
     const results = applyPatch(actual, spec.patch)
     t.deepEqual(actual, expected, `should equal expected output after applying patches`)
@@ -134,3 +138,4 @@ spec_data.filter(spec => spec.diffable).forEach(spec => {
     t.deepEqual(actual, expected, `should produce diff equal to spec patch`)
   })
 })
+

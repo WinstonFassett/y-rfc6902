@@ -1,8 +1,8 @@
-import {Pointer} from './pointer'
-export {Pointer}
-
 import {apply} from './patch'
 import {Operation, TestOperation, isDestructive, Diff, VoidableDiff, diffAny} from './diff'
+import { Doc } from 'yjs'
+import { objectToY } from './y-utils'
+import { YPointer } from './y-pointer'
 
 export {Operation, TestOperation}
 export type Patch = Operation[]
@@ -23,12 +23,12 @@ This method mutates the target object in-place.
          otherwise, the result will be an instance of one of the Error classes:
          MissingError, InvalidOperationError, or TestError.
 */
-export function applyPatch(object: any, patch: Operation[]) {
-  return patch.map(operation => apply(object, operation))
+export function applyPatch(object: any, patch: Operation[], cloneValue?: boolean) {
+  return patch.map(operation => apply(object, operation, cloneValue))
 }
 
 function wrapVoidableDiff(diff: VoidableDiff): Diff {
-  function wrappedDiff(input: any, output: any, ptr: Pointer): Operation[] {
+  function wrappedDiff(input: any, output: any, ptr: YPointer): Operation[] {
     const custom_patch = diff(input, output, ptr)
     // ensure an array is always returned
     return Array.isArray(custom_patch) ? custom_patch : diffAny(input, output, ptr, wrappedDiff)
@@ -50,7 +50,7 @@ to fall back to default behaviour.
 Returns list of operations to perform on `input` to produce `output`.
 */
 export function createPatch(input: any, output: any, diff?: VoidableDiff): Operation[] {
-  const ptr = new Pointer()
+  const ptr = new YPointer()
   // a new Pointer gets a default path of [''] if not specified
   return (diff ? wrapVoidableDiff(diff) : diffAny)(input, output, ptr)
 }
@@ -59,10 +59,16 @@ export function createPatch(input: any, output: any, diff?: VoidableDiff): Opera
 Create a test operation based on `input`'s current evaluation of the JSON
 Pointer `path`; if such a pointer cannot be resolved, returns undefined.
 */
-function createTest(input: any, path: string): TestOperation | undefined {
-  const endpoint = Pointer.fromJSON(path).evaluate(input)
+function createYTest(input: any, path: string): TestOperation | undefined {
+  const doc = new Doc()
+  const y = objectToY(input)
+  const testMap = doc.getMap('test')
+  testMap.set('item', y)
+  const yInput = y
+  const endpoint = YPointer.fromJSON(path).evaluate(yInput)
+  const value = endpoint.value && endpoint.value.toJSON ? endpoint.value.toJSON() : endpoint.value
   if (endpoint !== undefined) {
-    return {op: 'test', path, value: endpoint.value}
+    return {op: 'test', path, value}
   }
 }
 
@@ -76,13 +82,14 @@ side-effects (which is not a good idea anyway).
 
 Returns list of test operations.
 */
-export function createTests(input: any, patch: Operation[]): TestOperation[] {
+
+export function createYTests(input: any, patch: Operation[]): TestOperation[] {
   const tests = new Array<TestOperation>()
   patch.filter(isDestructive).forEach(operation => {
-    const pathTest = createTest(input, operation.path)
+    const pathTest = createYTest(input, operation.path)
     if (pathTest) tests.push(pathTest)
     if ('from' in operation) {
-      const fromTest = createTest(input, operation.from)
+      const fromTest = createYTest(input, operation.from)
       if (fromTest) tests.push(fromTest)
     }
   })
