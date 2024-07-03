@@ -2,8 +2,8 @@
 
 [![latest version published to npm](https://badge.fury.io/js/rfc6902.svg)](https://www.npmjs.com/package/rfc6902)
 [![monthly downloads from npm](https://img.shields.io/npm/dm/rfc6902.svg?style=flat)](https://www.npmjs.com/package/rfc6902)
-[![Travis CI build status](https://travis-ci.org/chbrown/rfc6902.svg?branch=master)](https://travis-ci.org/chbrown/rfc6902)
-[![Coverage status on Coveralls](https://coveralls.io/repos/github/chbrown/rfc6902/badge.svg?branch=master)](https://coveralls.io/github/chbrown/rfc6902?branch=master)
+[![Travis CI build status](https://travis-ci.org/WinstonFassett/y-rfc6902.svg?branch=master)](https://travis-ci.org/WinstonFassett/y-rfc6902)
+[![Coverage status on Coveralls](https://coveralls.io/repos/github/WinstonFassett/y-rfc6902/badge.svg?branch=master)](https://coveralls.io/github/WinstonFassett/y-rfc6902?branch=master)
 
 Complete implementation of [RFC6902](http://tools.ietf.org/html/rfc6902) "JavaScript Object Notation (JSON) Patch"
 (including [RFC6901](http://tools.ietf.org/html/rfc6901) "JavaScript Object Notation (JSON) Pointer"),
@@ -11,23 +11,18 @@ for creating and consuming `application/json-patch+json` documents.
 Also offers "diff" functionality without using `Object.observe`.
 
 
-## Demo
-
-Simple [web app](https://chbrown.github.io/rfc6902/) using the browser-compiled version of the code.
-
-
 ## Quickstart
 
 ### Install locally
 
 ```sh
-npm install --save rfc6902
+npm install --save y-rfc6902
 ```
 
 ### Import in your script
 
 ```js
-const rfc6902 = require('rfc6902')
+const rfc6902 = require('y-rfc6902')
 ```
 
 ### Calculate diff between two objects
@@ -61,7 +56,7 @@ users
 
 In ES6 syntax:
 ```js
-import {applyPatch, createPatch} from 'rfc6902'
+import {applyPatch, createPatch} from 'y-rfc6902'
 ```
 
 Using [TypeScript](https://www.typescriptlang.org/) annotations for clarity:
@@ -115,41 +110,6 @@ interface Operation {
 
 Different operations use different combinations of `from` / `value`;
 see [JSON Patch (RFC6902)](#json-patch-rfc6902) below.
-
-
-## Changelog
-
-I'm not going to copy & paste my relatively descriptive commit messages into groups here;
-rather, these are just the changes that merited major version bumps:
-
-### `4.x.x` → `5.0.0` (2021-12-15)
-
-* Short-circuits JSON pointer traversal over the prototype-polluting tokens `__proto__`, `constructor`, and `prototype`. I.e., `/a/__proto__/b` and `/a/b` evaluate to the same thing.
-This is in violation of the spec,
-which makes no special provisions for this idiosyncrasy of the JavaScript language,
-but AFAIK there's no way to strictly comply with the spec in JavaScript.
-It would probably be more correct to throw an error in those cases,
-but this 'solution' feels less disruptive / more in line with workarounds implemented by other libraries.
-
-### `3.x.x` → `4.0.0` (2020-07-27)
-
-* Potential performance regression due to consolidating separate `compare(a, b): boolean` and `diff(a, b): Operation[]` logic into basically defining `compare(a, b)` as `!diff(a, b).length` (i.e., `diff(a, b)` returns empty array).
-This simplifies the codebase and ensures underlying semantics do not diverge,
-but potentially does unnecessary work in computing a full diff when all we really care about is whether there is at least one difference.
-It also facilitates the user completely specifying custom diff functionality with just one `diff` function,
-as opposed to a `diff` and corresponding `compare`
-(and avoids the headache of having to propagate both of those around internally).
-
-### `2.x.x` → `3.0.0` (2018-09-17)
-
-* Corrects improper behavior in a few buggy edge cases,
-which might conceivably break consumers relying on incorrect behavior.
-(Tbh [that applies to most bugfixes](https://xkcd.com/1172/) but I felt there were enough to add up to incrementing the major version.)
-* Also moves around some of the internal API that was not intended to be used externally,
-but technically _was_ exported.
-If you're only importing the public API of `applyPatch`, `createPatch`, and `createTests` from `'rfc6902'`,
-nothing has changed.
-
 
 ## Implementation details
 

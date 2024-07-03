@@ -1,16 +1,17 @@
 {
-  "name": "rfc6902",
+  "name": "y-rfc6902",
   "version": "5.1.1",
-  "description": "Complete implementation of RFC6902 (patch and diff)",
+  "description": "Complete implementation of RFC6902 (patch and diff) for YJS",
   "keywords": [
     "json",
     "patch",
     "diff",
-    "rfc6902"
+    "rfc6902",
+    "yjs"
   ],
-  "homepage": "https://github.com/chbrown/rfc6902",
-  "repository": "github:chbrown/rfc6902",
-  "author": "Christopher Brown <io@henrian.com> (http://henrian.com)",
+  "homepage": "https://github.com/WinstonFassett/y-rfc6902",
+  "repository": "github:WinstonFassett/y-rfc6902",
+  "author": "Winston Fassett <dev@winstonfassett.com> (https://winstonfassett.com)",
   "license": "MIT",
   "devDependencies": {
     "@types/js-yaml": "4.0.0",

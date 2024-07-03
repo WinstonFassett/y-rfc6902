@@ -1,18 +1,19 @@
 {
-  "name": "rfc6902",
+  "name": "y-rfc6902",
   "description": "Complete implementation of RFC6902 (patch and diff)",
-  "main": "./dist/rfc6902.js",
+  "main": "./dist/y-rfc6902.js",
   "authors": [
-    "Christopher Brown <io@henrian.com> (http://henrian.com)"
+    "Winston Fassett <dev@winstonfassett.com> (https://winstonfassett.com)"
   ],
   "license": "MIT",
   "keywords": [
     "json",
     "patch",
     "diff",
-    "rfc6902"
+    "rfc6902",
+    "yjs"
   ],
-  "homepage": "https://github.com/chbrown/rfc6902",
+  "homepage": "https://github.com/WinstonFassett/y-rfc6902",
   "moduleType": [
     "amd",
     "es6",
